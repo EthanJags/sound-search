@@ -25,8 +25,8 @@ export default function Home() {
   }[]>([]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950 text-gray-800 dark:text-gray-100">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none" />
+    <div className="min-h-screen blob-gradient text-gray-800 dark:text-gray-100">
+      <div className="absolute inset-0 grain-overlay pointer-events-none" />
       
       <div className="relative container max-w-6xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <header className="text-center mb-16 space-y-4">

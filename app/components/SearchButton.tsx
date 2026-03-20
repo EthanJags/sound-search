@@ -95,8 +95,7 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
         className={`
           relative group overflow-hidden
           px-6 py-3 rounded-xl
-          bg-gradient-to-r from-indigo-500 to-purple-500
-          dark:from-indigo-600 dark:to-purple-600
+          bg-indigo-500 dark:bg-indigo-600
           text-white font-medium
           transition-all duration-300
           hover:shadow-lg hover:shadow-indigo-500/25
@@ -105,7 +104,7 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
           disabled:hover:shadow-none
         `}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-700 dark:to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-indigo-600 dark:bg-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="relative flex items-center justify-center gap-2">
           {isSearching ? (
             <>

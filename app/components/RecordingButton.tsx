@@ -142,9 +142,9 @@ return (
           rounded-full
           flex items-center justify-center
           transition-colors duration-500
-          ${isRecording ? 
-            'bg-gradient-to-r from-red-500 to-rose-500' : 
-            'bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105'
+          ${isRecording ?
+            'bg-red-500' :
+            'bg-indigo-500 hover:scale-105'
           }
         `}
       >
