@@ -1,6 +1,8 @@
 import { FC } from 'react';
 import { useState } from 'react';
 import { Play, Download, Pause } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface RankedSound {
   filename: string;
@@ -16,73 +18,62 @@ const RankedSoundItem = ({ sound, index }: { sound: RankedSound; index: number }
   const [isPlaying, setIsPlaying] = useState(false);
 
   return (
-    <div 
-      className="group relative overflow-hidden backdrop-blur-sm bg-white/40 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-100 dark:hover:shadow-indigo-900/20"
-    >
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/10 to-purple-50/10 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+    <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-md hover:border-primary/50 bg-white dark:bg-white text-zinc-950 border-zinc-200/80 ring-zinc-200/40">
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       
-      <div className="relative p-4 space-y-3">
+      <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold">
-              {index + 1}
-            </div>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{sound.filename}</span>
+            {sound.audioUrl && (
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {isPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+              </button>
+            )}
+            <span className="font-medium font-mono text-zinc-950 truncate max-w-[200px] sm:max-w-xs" title={sound.filename}>
+              {sound.filename}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 text-sm rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+            <Badge variant="secondary" className="font-mono bg-primary/10 text-primary hover:bg-primary/20">
               {(sound.similarity * 100).toFixed(1)}% match
-            </span>
+            </Badge>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {sound.audioUrl && (
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause size={16} /> Pause Audio
-                </>
-              ) : (
-                <>
-                  <Play size={16} /> Play Audio
-                </>
-              )}
-            </button>
-          )}
-
-          {isPlaying && (
-            <div className="rounded-lg bg-gray-50 dark:bg-gray-900/50 p-3">
-              <audio
-                controls
-                controlsList="nodownload noplaybackrate"
-                className="w-full"
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-              >
-                <source src={sound.audioUrl} type="audio/ogg" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
-
+        <div className="flex flex-wrap gap-3 items-center">
           {sound.audioUrl && (
             <a
               href={sound.audioUrl}
               download={sound.filename}
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-zinc-100 h-8 px-3 py-2 font-mono text-xs gap-2 text-zinc-600 hover:text-zinc-950"
             >
-              <Download size={16} />
-              Download sound
+              <Download size={14} />
+              Download
             </a>
           )}
         </div>
-      </div>
-    </div>
+
+        {isPlaying && sound.audioUrl && (
+          <div className="rounded-lg bg-zinc-50 border border-zinc-200/80 p-3 mt-2 animate-in fade-in slide-in-from-top-2">
+            <audio
+              controls
+              controlsList="nodownload noplaybackrate"
+              className="w-full h-10"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              autoPlay
+            >
+              <source src={sound.audioUrl} type="audio/ogg" />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

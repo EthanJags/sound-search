@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface ShowMoreProps {
   setRankedSounds: (rankedSounds: any) => void;
@@ -22,27 +24,28 @@ export default function ShowMore({ setRankedSounds, startingIndex, setStartingIn
         setRankedSounds((prev: any[]) => [...prev, ...nextBatch]);
     }
 
+  // Only show the button if there are more items to load
+  if (startingIndex + batchSize >= ranking.length && ranking.length > 0) {
+    return null;
+  }
+
   return (
     <div className="flex justify-center mt-8">
-      <button
+      <Button
         onClick={() => showMore(startingIndex, batchSize)}
         disabled={isLoading}
-        className={`
-          px-6 py-2 text-sm font-medium text-white 
-          bg-indigo-600 rounded-md hover:bg-indigo-700 
-          transition-colors
-          disabled:opacity-50 disabled:cursor-not-allowed
-        `}
+        variant="secondary"
+        className="font-mono"
       >
         {isLoading ? (
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             Loading...
-          </div>
+          </>
         ) : (
           'Show More'
         )}
-      </button>
+      </Button>
     </div>
   );
 }

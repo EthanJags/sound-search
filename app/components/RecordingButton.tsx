@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mic, Square, Play, Pause } from "lucide-react";
+import { Mic } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface RecordingButtonProps {
   audioBlob: Blob | null;
@@ -81,6 +84,7 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
         URL.revokeObjectURL(audioUrl);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioBlob]);
 
   const formatTime = (seconds: number) => {
@@ -131,81 +135,71 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
       setIsRecording(false);
     }
   };
-return (
-  <div className="flex flex-col items-center gap-8">
-    <div className="relative mb-16">
-      <button
-        onClick={isRecording ? stopRecording : startRecording}
-        className={`
-          relative group
-          w-32 h-32 sm:w-40 sm:h-40
-          rounded-full
-          flex items-center justify-center
-          transition-colors duration-500
-          ${isRecording ?
-            'bg-red-500' :
-            'bg-indigo-500 hover:scale-105'
-          }
-        `}
-      >
-        {/* Outer ring animation - ONLY animation should be here */}
-        {isRecording && (
-          <div className="absolute inset-0 rounded-full animate-ping bg-red-500/20" />
-        )}
-        
-        {/* Center icon container - NO animations or transitions */}
-        <div className="
-          relative
-          w-16 h-16 sm:w-20 sm:h-20
-          rounded-full
-          flex items-center justify-center
-        ">
-          {isRecording ? (
-            <Square className="w-10 h-10 sm:w-16 sm:h-16 text-white" />
-          ) : (
-            <Mic className="w-10 h-10 sm:w-20 sm:h-20 text-white stroke-[1.5] stroke-black translate-y-1" />
+
+  return (
+    <div className="flex flex-col items-center gap-8 w-full">
+      <div className="relative flex flex-col items-center">
+        <Button
+          onClick={isRecording ? stopRecording : startRecording}
+          variant="default"
+          size="icon"
+          className={cn(
+            "relative group size-32 sm:size-40 rounded-full flex items-center justify-center p-0 transition-all duration-500 hover:scale-105 shadow-xl",
+            isRecording &&
+              "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40 border-transparent"
           )}
-        </div>
-      </button>
+        >
+          {/* Outer ring animation */}
+          {isRecording && (
+            <div className="absolute inset-0 rounded-full animate-ping bg-white/25" />
+          )}
+
+          <div className="relative flex size-full items-center justify-center">
+            {isRecording ? (
+              <div
+                aria-hidden
+                className="size-[28%] shrink-0 rounded-[2px] bg-white"
+              />
+            ) : (
+              <Mic className="size-[41%] text-primary-foreground stroke-[2]" />
+            )}
+          </div>
+        </Button>
 
         {/* Recording time or status text */}
-        <div className={`
-          absolute bottom-[-3rem] left-1/2 -translate-x-1/2
-          text-center transition-all duration-500
-          ${isRecording ? 'scale-110' : 'scale-100'}
-        `}>
+        <div className="mt-6 h-8 flex items-center justify-center">
           {isRecording ? (
-            <div className="flex items-center gap-2 text-red-500 font-medium">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <div className="flex items-center gap-2 text-destructive font-mono font-medium">
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
               <span className="text-xl">{formatTime(recordingTime)}</span>
             </div>
           ) : (
-            <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap truncate">
-              {audioBlob ? 'New Recording' : 'Start Recording'}
+            <span className="text-zinc-600 font-mono">
+              {audioBlob ? 'Ready to search' : 'Tap to record'}
             </span>
           )}
         </div>
       </div>
 
-    {/* Audio playback */}
-    {audioBlob && audioUrl && (
-      <div className={`
-        w-full max-w-md mb-8
-        transition-all duration-500 ease-out
-        ${isRecording ? 'opacity-50' : 'opacity-100'}
-      `}>
-        <audio
-          controls
-          className="w-full"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          key={audioUrl} // Add key to force re-render when URL changes
-        >
-          <source src={audioUrl} type="audio/webm" />
-          Your browser does not support the audio element.
-        </audio>
-      </div>
-    )}
-  </div>
-)
-};
+      {/* Audio playback */}
+      {audioBlob && audioUrl && (
+        <Card className={`
+          w-full max-w-md p-4 bg-white border-zinc-200/80 text-zinc-950 ring-zinc-200/40
+          transition-all duration-500 ease-out
+          ${isRecording ? 'opacity-50 pointer-events-none' : 'opacity-100'}
+        `}>
+          <audio
+            controls
+            className="w-full h-10"
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            key={audioUrl}
+          >
+            <source src={audioUrl} type="audio/webm" />
+            Your browser does not support the audio element.
+          </audio>
+        </Card>
+      )}
+    </div>
+  );
+}

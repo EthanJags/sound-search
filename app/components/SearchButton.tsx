@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { extractMFCC } from "@/app/lib/mfcc";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SearchButtonProps {
   audioBlob: Blob | null;
@@ -67,9 +69,6 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
       setRankedSounds(mappedRanking.slice(0, batchSize));
       
 
-
-
-
       setSearchStatus({
         type: "success",
         message: "Search completed successfully!"
@@ -88,56 +87,40 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <button
+    <div className="flex flex-col gap-4 w-full">
+      <Button
         onClick={handleSearch}
         disabled={!audioBlob || isSearching}
-        className={`
-          relative group overflow-hidden
-          px-6 py-3 rounded-xl
-          bg-indigo-500 dark:bg-indigo-600
-          text-white font-medium
-          transition-all duration-300
-          hover:shadow-lg hover:shadow-indigo-500/25
-          dark:hover:shadow-indigo-600/25
-          disabled:opacity-50 disabled:cursor-not-allowed
-          disabled:hover:shadow-none
-        `}
+        size="lg"
+        className="w-full font-mono text-base h-14"
       >
-        <div className="absolute inset-0 bg-indigo-600 dark:bg-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        <div className="relative flex items-center justify-center gap-2">
-          {isSearching ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Searching...</span>
-            </>
-          ) : (
-            <>
-              <Search className="w-4 h-4" />
-              <span>Search with Audio</span>
-            </>
-          )}
-        </div>
-      </button>
+        {isSearching ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Searching...
+          </>
+        ) : (
+          <>
+            <Search className="w-5 h-5 mr-2" />
+            Search with Audio
+          </>
+        )}
+      </Button>
 
       {searchStatus && (
-        <div 
-          className={`
-            flex items-center gap-3 p-4 rounded-xl
-            backdrop-blur-sm transition-all duration-300
-            ${searchStatus.type === "success" 
-              ? "bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800"
-              : "bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800"
-            }
-          `}
-        >
-          <div className={`w-2 h-2 rounded-full ${
-            searchStatus.type === "success" 
-              ? "bg-green-500 dark:bg-green-400"
-              : "bg-red-500 dark:bg-red-400"
-          }`} />
-          {searchStatus.message}
-        </div>
+        <Alert variant={searchStatus.type === "error" ? "destructive" : "default"} className={`animate-in fade-in slide-in-from-top-2 ${searchStatus.type === "success" ? "border-green-500/50 text-green-600 dark:text-green-500 bg-green-500/10" : ""}`}>
+          {searchStatus.type === "error" ? (
+            <AlertCircle className="h-4 w-4" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 stroke-green-600 dark:stroke-green-500" />
+          )}
+          <AlertTitle className="font-mono">
+            {searchStatus.type === "success" ? "Success" : "Error"}
+          </AlertTitle>
+          <AlertDescription className="font-mono text-sm">
+            {searchStatus.message}
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );
