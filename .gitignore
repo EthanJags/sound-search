@@ -32,8 +32,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env*.local
+.env
 
 # vercel
 .vercel
@@ -42,10 +43,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# backend
+# backend (legacy, to be removed)
 backend/__pycache__/
-
-# sounds
 backend/demoSounds/
 backend/inputs/
 backend/new/
