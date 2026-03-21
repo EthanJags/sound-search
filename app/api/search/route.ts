@@ -33,21 +33,29 @@ export async function POST(request: NextRequest) {
         id,
         1 - (embedding <=> ${embeddingStr}::vector) as score,
         file_path,
-        metadata
+        metadata,
+        sound_pack
       FROM sounds
       ORDER BY embedding <=> ${embeddingStr}::vector
       LIMIT 100
     `;
 
-    const matches = results.map((row) => ({
-      id: row.id,
-      score: Number(row.score),
-      audioUrl: toBlobUrl(row.file_path),
-      metadata: {
-        file_path: row.file_path,
-        ...(typeof row.metadata === "object" ? row.metadata : {}),
-      },
-    }));
+    const matches = results.map((row) => {
+      const metadata = typeof row.metadata === "object" ? row.metadata : {};
+      // For Freesound sounds, use the blob_url from metadata directly
+      const audioUrl = metadata.blob_url || toBlobUrl(row.file_path);
+
+      return {
+        id: row.id,
+        score: Number(row.score),
+        audioUrl,
+        sound_pack: row.sound_pack || "Unknown",
+        metadata: {
+          file_path: row.file_path,
+          ...metadata,
+        },
+      };
+    });
 
     return NextResponse.json({ matches });
   } catch (error) {

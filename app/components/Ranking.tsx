@@ -7,6 +7,7 @@ interface RankedSound {
   filename: string;
   similarity: number;
   audioUrl?: string;
+  soundPack?: string;
 }
 
 interface RankingProps {
@@ -143,9 +144,16 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
               </button>
             )}
 
-            <span className="text-body font-bold text-zinc-950 truncate min-w-0 flex-1" title={sound.filename}>
-              {sound.filename}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span className="text-body font-bold text-zinc-950 truncate block" title={sound.filename}>
+                {sound.filename}
+              </span>
+              {sound.soundPack && (
+                <span className="text-caption text-zinc-400 truncate block">
+                  {sound.soundPack}
+                </span>
+              )}
+            </div>
 
             <span className="text-body-sm text-zinc-400 tabular-nums flex-shrink-0">
               {(sound.similarity * 100).toFixed(1)}%

@@ -62,6 +62,7 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
         similarity: match.score,
         file_path: match.metadata.file_path,
         audioUrl: match.audioUrl,
+        soundPack: match.sound_pack,
       }));
       setRanking(mappedRanking);
 

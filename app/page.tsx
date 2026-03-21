@@ -4,12 +4,9 @@ import RecordingButton from "./components/RecordingButton";
 import SearchButton from "./components/SearchButton";
 import { useState } from "react";
 import Ranking from "./components/Ranking";
-import { Waves } from "lucide-react";
+
 import ShowMore from "./components/ShowMore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
-// Card imports kept for Similar Sounds section below
 
 const batchSize = 10;
 
@@ -25,25 +22,18 @@ export default function Home() {
     filename: string;
     similarity: number;
     audioUrl?: string;
+    soundPack?: string;
   }[]>([]);
 
   const hasResults = rankedSounds.length > 0;
-
-  const handleNewSearch = () => {
-    setAudioBlob(null);
-    setRanking([]);
-    setRankedSounds([]);
-    setStartingIndex(0);
-  };
 
   return (
     <div className="min-h-screen blob-gradient text-foreground flex flex-col">
       <div className="absolute inset-0 grain-overlay pointer-events-none" />
 
-      <div className="relative max-w-[640px] mx-auto px-6 pt-16 pb-24 flex-1 w-full">
-        <header className="mb-12">
-          <div className="flex items-center gap-3 mb-3">
-            <Waves className="w-8 h-8 text-primary" />
+      <div className={`relative max-w-[640px] mx-auto px-6 pb-24 flex-1 w-full flex flex-col transition-[padding] duration-500 ease-out ${hasResults ? 'pt-16' : 'pt-[30vh]'}`}>
+        <header className="text-center mb-8">
+          <div className="flex items-center gap-3 mb-3 justify-center">
             <h1 className="text-title-lg sm:text-display font-extrabold font-display text-foreground">
               Sound Similarity Search
             </h1>
@@ -55,20 +45,6 @@ export default function Home() {
 
         <main className="flex flex-col gap-6">
           <div className="space-y-4">
-            {hasResults && (
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleNewSearch}
-                  variant="outline"
-                  size="sm"
-                  className="text-zinc-600 border-zinc-300 hover:bg-zinc-100 bg-white"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1.5" />
-                  Search new audio
-                </Button>
-              </div>
-            )}
-
             <RecordingButton audioBlob={audioBlob} setAudioBlob={setAudioBlob} />
 
             {!hasResults && (
@@ -115,10 +91,6 @@ export default function Home() {
         <span>by</span>
         <a href="https://ethanjagoda.me" className="text-primary hover:underline font-bold">
           Ethan Jagoda
-        </a>
-        <span>&</span>
-        <a href="https://aadityapore.webflow.io/" className="text-primary hover:underline font-bold">
-          Aaditya Pore
         </a>
       </footer>
     </div>
