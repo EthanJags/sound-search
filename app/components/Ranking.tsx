@@ -160,14 +160,28 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
             </span>
 
             {sound.audioUrl && (
-              <a
-                href={sound.audioUrl}
-                download={sound.filename}
-                onClick={(e) => e.stopPropagation()}
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    const res = await fetch(sound.audioUrl!);
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = sound.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.open(sound.audioUrl!, "_blank");
+                  }
+                }}
                 className="flex-shrink-0 text-zinc-300 hover:text-zinc-600 transition-colors"
               >
                 <Download size={18} />
-              </a>
+              </button>
             )}
           </div>
         ))}
