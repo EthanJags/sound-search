@@ -136,54 +136,74 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && e.target === document.body) {
+        e.preventDefault();
+        if (!isRecording) {
+          startRecording();
+        }
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        if (isRecording) {
+          stopRecording();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isRecording, mediaRecorder]);
+
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      <div className="relative flex flex-col items-center">
-        <Button
-          onClick={isRecording ? stopRecording : startRecording}
-          variant="default"
-          size="icon"
+    <div className="flex flex-col gap-3 w-full">
+      <button
+        onClick={isRecording ? stopRecording : startRecording}
+        className={cn(
+          "w-full flex items-center gap-3 px-4 py-3 rounded-full border transition-all duration-200 cursor-pointer text-left",
+          isRecording
+            ? "border-destructive/50 bg-destructive/5 ring-2 ring-destructive/20"
+            : "border-zinc-300 bg-zinc-50 hover:border-zinc-400 hover:bg-zinc-100"
+        )}
+      >
+        <div
           className={cn(
-            "relative group size-20 sm:size-24 rounded-full flex items-center justify-center p-0 transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] shadow-lg",
-            isRecording &&
-              "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40 border-transparent"
+            "shrink-0 size-9 rounded-full flex items-center justify-center transition-colors duration-200",
+            isRecording
+              ? "bg-destructive text-white"
+              : "bg-zinc-900 text-white"
           )}
         >
-          {isRecording && (
-            <div className="absolute inset-0 rounded-full animate-ping bg-white/25" />
+          {isRecording ? (
+            <div className="size-3 rounded-[2px] bg-white" />
+          ) : (
+            <Mic className="size-4 stroke-[2.5]" />
           )}
+        </div>
 
-          <div className="relative flex size-full items-center justify-center">
-            {isRecording ? (
-              <div
-                aria-hidden
-                className="size-[28%] shrink-0 rounded-[2px] bg-white"
-              />
-            ) : (
-              <Mic className="size-[38%] text-primary-foreground stroke-[2]" />
-            )}
-          </div>
-        </Button>
-
-        <div className="mt-4 h-6 flex items-center justify-center">
+        <div className="flex-1 min-w-0">
           {isRecording ? (
             <div className="flex items-center gap-2 text-destructive">
               <div className="w-[6px] h-[6px] rounded-full bg-destructive animate-pulse" />
               <span className="text-body font-bold tabular-nums">{formatTime(recordingTime)}</span>
+              <span className="text-body-sm font-medium">Recording...</span>
             </div>
+          ) : audioBlob ? (
+            <span className="text-body-sm text-zinc-600 font-medium">Recording ready — tap to re-record</span>
           ) : (
-            <span className="text-body-sm text-zinc-500">
-              {audioBlob ? 'Ready to search' : 'Tap to record'}
-            </span>
+            <span className="text-body-sm text-zinc-400">Press the spacebar to record</span>
           )}
         </div>
-      </div>
+      </button>
 
-      {audioBlob && audioUrl && (
-        <div className={cn(
-          "w-full transition-all duration-300",
-          isRecording && "opacity-50 pointer-events-none"
-        )}>
+      {audioBlob && audioUrl && !isRecording && (
+        <div className="w-full px-1">
           <audio
             controls
             className="w-full h-8"

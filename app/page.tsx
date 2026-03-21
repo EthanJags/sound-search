@@ -9,6 +9,7 @@ import ShowMore from "./components/ShowMore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
+// Card imports kept for Similar Sounds section below
 
 const batchSize = 10;
 
@@ -53,40 +54,36 @@ export default function Home() {
         </header>
 
         <main className="flex flex-col gap-6">
-          <Card className="bg-white dark:bg-white text-zinc-950 border-zinc-200/80 shadow-xl ring-zinc-200/40">
-            <CardHeader className="pb-1 px-6 pt-6 flex flex-row items-center justify-between">
-              <CardTitle className="text-body-lg font-bold">Record Audio</CardTitle>
-              {hasResults && (
+          <div className="space-y-4">
+            {hasResults && (
+              <div className="flex justify-end">
                 <Button
                   onClick={handleNewSearch}
                   variant="outline"
                   size="sm"
-                  className="text-zinc-600 border-zinc-300 hover:bg-zinc-100"
+                  className="text-zinc-600 border-zinc-300 hover:bg-zinc-100 bg-white"
                 >
                   <RotateCcw className="w-4 h-4 mr-1.5" />
                   Search new audio
                 </Button>
-              )}
-            </CardHeader>
-            <CardContent className="px-6 pb-6 pt-4 space-y-6">
-              <div className="flex justify-center">
-                <RecordingButton audioBlob={audioBlob} setAudioBlob={setAudioBlob} />
               </div>
+            )}
 
-              {!hasResults && (
-                <SearchButton
-                  audioBlob={audioBlob}
-                  searchMode={searchMode}
-                  setRankedSounds={setRankedSounds}
-                  setRanking={setRanking}
-                  ranking={ranking}
-                  startingIndex={startingIndex}
-                  batchSize={batchSize}
-                  setStartingIndex={setStartingIndex}
-                />
-              )}
-            </CardContent>
-          </Card>
+            <RecordingButton audioBlob={audioBlob} setAudioBlob={setAudioBlob} />
+
+            {!hasResults && (
+              <SearchButton
+                audioBlob={audioBlob}
+                searchMode={searchMode}
+                setRankedSounds={setRankedSounds}
+                setRanking={setRanking}
+                ranking={ranking}
+                startingIndex={startingIndex}
+                batchSize={batchSize}
+                setStartingIndex={setStartingIndex}
+              />
+            )}
+          </div>
 
           {rankedSounds.length > 0 && (
             <Card className="bg-white dark:bg-white text-zinc-950 border-zinc-200/80 shadow-xl ring-zinc-200/40 animate-in fade-in slide-in-from-bottom-4 duration-500">
