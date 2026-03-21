@@ -42,8 +42,8 @@
 
 @layer base {
   .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
+    --font-heading: var(--font-work-sans);
+    --font-sans: var(--font-inter);
   }
   :root {
     --background: oklch(1 0 0);
@@ -117,9 +117,14 @@
     outline-color: hsl(var(--ring) / 0.5);
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
   }
 }

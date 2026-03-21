@@ -92,7 +92,7 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
         onClick={handleSearch}
         disabled={!audioBlob || isSearching}
         size="lg"
-        className="w-full font-mono text-base h-14"
+        className="w-full text-body font-bold h-12 rounded-full text-primary-foreground"
       >
         {isSearching ? (
           <>
@@ -114,10 +114,10 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
           ) : (
             <CheckCircle2 className="h-4 w-4 stroke-green-600 dark:stroke-green-500" />
           )}
-          <AlertTitle className="font-mono">
+          <AlertTitle className="text-body font-bold">
             {searchStatus.type === "success" ? "Success" : "Error"}
           </AlertTitle>
-          <AlertDescription className="font-mono text-sm">
+          <AlertDescription className="text-body-sm">
             {searchStatus.message}
           </AlertDescription>
         </Alert>

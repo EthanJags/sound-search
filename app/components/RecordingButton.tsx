@@ -137,19 +137,18 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 w-full">
+    <div className="flex flex-col items-center gap-6 w-full">
       <div className="relative flex flex-col items-center">
         <Button
           onClick={isRecording ? stopRecording : startRecording}
           variant="default"
           size="icon"
           className={cn(
-            "relative group size-32 sm:size-40 rounded-full flex items-center justify-center p-0 transition-all duration-500 hover:scale-105 shadow-xl",
+            "relative group size-20 sm:size-24 rounded-full flex items-center justify-center p-0 transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] shadow-lg",
             isRecording &&
               "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40 border-transparent"
           )}
         >
-          {/* Outer ring animation */}
           {isRecording && (
             <div className="absolute inset-0 rounded-full animate-ping bg-white/25" />
           )}
@@ -161,36 +160,33 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
                 className="size-[28%] shrink-0 rounded-[2px] bg-white"
               />
             ) : (
-              <Mic className="size-[41%] text-primary-foreground stroke-[2]" />
+              <Mic className="size-[38%] text-primary-foreground stroke-[2]" />
             )}
           </div>
         </Button>
 
-        {/* Recording time or status text */}
-        <div className="mt-6 h-8 flex items-center justify-center">
+        <div className="mt-4 h-6 flex items-center justify-center">
           {isRecording ? (
-            <div className="flex items-center gap-2 text-destructive font-mono font-medium">
-              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <span className="text-xl">{formatTime(recordingTime)}</span>
+            <div className="flex items-center gap-2 text-destructive">
+              <div className="w-[6px] h-[6px] rounded-full bg-destructive animate-pulse" />
+              <span className="text-body font-bold tabular-nums">{formatTime(recordingTime)}</span>
             </div>
           ) : (
-            <span className="text-zinc-600 font-mono">
+            <span className="text-body-sm text-zinc-500">
               {audioBlob ? 'Ready to search' : 'Tap to record'}
             </span>
           )}
         </div>
       </div>
 
-      {/* Audio playback */}
       {audioBlob && audioUrl && (
-        <Card className={`
-          w-full max-w-md p-4 bg-white border-zinc-200/80 text-zinc-950 ring-zinc-200/40
-          transition-all duration-500 ease-out
-          ${isRecording ? 'opacity-50 pointer-events-none' : 'opacity-100'}
-        `}>
+        <div className={cn(
+          "w-full transition-all duration-300",
+          isRecording && "opacity-50 pointer-events-none"
+        )}>
           <audio
             controls
-            className="w-full h-10"
+            className="w-full h-8"
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             key={audioUrl}
@@ -198,7 +194,7 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
             <source src={audioUrl} type="audio/webm" />
             Your browser does not support the audio element.
           </audio>
-        </Card>
+        </div>
       )}
     </div>
   );

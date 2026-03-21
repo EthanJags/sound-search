@@ -25,17 +25,17 @@ export default function ShowMore({ setRankedSounds, startingIndex, setStartingIn
     }
 
   // Only show the button if there are more items to load
-  if (startingIndex + batchSize >= ranking.length && ranking.length > 0) {
+  if (startingIndex >= ranking.length && ranking.length > 0) {
     return null;
   }
 
   return (
-    <div className="flex justify-center mt-8">
+    <div className="flex justify-center mt-4">
       <Button
         onClick={() => showMore(startingIndex, batchSize)}
         disabled={isLoading}
         variant="secondary"
-        className="font-mono"
+        className="text-body-sm font-bold rounded-full px-6 h-8"
       >
         {isLoading ? (
           <>
