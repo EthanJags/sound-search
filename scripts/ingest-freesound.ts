@@ -1,7 +1,7 @@
 /**
  * Ingest music production sounds from Freesound.org API.
  *
- * Downloads audio, extracts MFCC embeddings, uploads to Vercel Blob,
+ * Downloads audio, extracts 83-dim audio feature embeddings, uploads to Vercel Blob,
  * and inserts into Neon PostgreSQL.
  *
  * Usage:
@@ -20,11 +20,34 @@
 import { neon } from "@neondatabase/serverless";
 import { put } from "@vercel/blob";
 import Meyda from "meyda";
-
-// @ts-ignore — audio-decode has no types
-import decode from "audio-decode";
+import { execSync } from "child_process";
+import { writeFileSync, readFileSync, unlinkSync, mkdtempSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 const sql = neon(process.env.DATABASE_URL!);
+
+/** Decode any audio format to mono Float32Array PCM using ffmpeg */
+function decodeAudioWithFFmpeg(buffer: Buffer, format: string): { channelData: Float32Array; sampleRate: number } {
+  const tmp = mkdtempSync(join(tmpdir(), "audio-"));
+  const inputPath = join(tmp, `input.${format}`);
+  const outputPath = join(tmp, "output.raw");
+  const sampleRate = 44100;
+
+  try {
+    writeFileSync(inputPath, buffer);
+    execSync(
+      `ffmpeg -y -i "${inputPath}" -ac 1 -ar ${sampleRate} -f f32le "${outputPath}" 2>/dev/null`
+    );
+    const rawPcm = readFileSync(outputPath);
+    const channelData = new Float32Array(rawPcm.buffer, rawPcm.byteOffset, rawPcm.byteLength / 4);
+    return { channelData, sampleRate };
+  } finally {
+    try { unlinkSync(inputPath); } catch {}
+    try { unlinkSync(outputPath); } catch {}
+    try { unlinkSync(tmp); } catch {}
+  }
+}
 const FREESOUND_API_KEY = process.env.FREESOUND_API_KEY!;
 const MAX_PER_TAG = parseInt(process.env.FREESOUND_MAX_PER_TAG || "150", 10);
 const PAGE_SIZE = parseInt(process.env.FREESOUND_PAGE_SIZE || "50", 10);
@@ -73,6 +96,7 @@ const SEARCH_TAGS: Record<string, string[]> = {
 const N_MFCC = 13;
 const BUFFER_SIZE = 512;
 const HOP_SIZE = 256;
+const NUM_SEGMENTS = 4;
 
 // Supported formats in order of preference (OGG is smallest, WAV is most compatible)
 const PREFERRED_FORMATS = ["ogg", "wav", "mp3"];
@@ -91,36 +115,109 @@ interface FreesoundSearchResponse {
   results: FreesoundResult[];
 }
 
-/** Extract 13-dim MFCC vector from decoded PCM data */
-function extractMFCC(channelData: Float32Array, sampleRate: number): number[] {
+interface FrameFeatures {
+  mfcc: number[];
+  spectralCentroid: number;
+  spectralRolloff: number;
+  spectralFlatness: number;
+  rms: number;
+  zcr: number;
+}
+
+/** Extract per-frame features from PCM data */
+function extractFrames(channelData: Float32Array, sampleRate: number): FrameFeatures[] {
   Meyda.bufferSize = BUFFER_SIZE;
   Meyda.sampleRate = sampleRate;
   Meyda.numberOfMFCCCoefficients = N_MFCC;
 
-  const frames: number[][] = [];
+  const frames: FrameFeatures[] = [];
+  const featureNames = ["mfcc", "spectralCentroid", "spectralRolloff", "spectralFlatness", "rms", "zcr"];
+
   for (let i = 0; i + BUFFER_SIZE <= channelData.length; i += HOP_SIZE) {
     const frame = channelData.slice(i, i + BUFFER_SIZE);
-    const features = Meyda.extract(["mfcc"], frame);
+    const features = Meyda.extract(featureNames, frame);
+
     if (features && typeof features === "object" && "mfcc" in features && features.mfcc) {
-      frames.push(features.mfcc as number[]);
+      frames.push({
+        mfcc: features.mfcc as number[],
+        spectralCentroid: (features.spectralCentroid as number) || 0,
+        spectralRolloff: (features.spectralRolloff as number) || 0,
+        spectralFlatness: (features.spectralFlatness as number) || 0,
+        rms: (features.rms as number) || 0,
+        zcr: (features.zcr as number) || 0,
+      });
     }
   }
+
+  return frames;
+}
+
+function mean(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  let sum = 0;
+  for (const v of arr) sum += v;
+  return sum / arr.length;
+}
+
+function variance(arr: number[], avg: number): number {
+  if (arr.length === 0) return 0;
+  let sum = 0;
+  for (const v of arr) {
+    const diff = v - avg;
+    sum += diff * diff;
+  }
+  return sum / arr.length;
+}
+
+/** Extract 83-dim feature vector from decoded PCM data */
+function extractFeatures(channelData: Float32Array, sampleRate: number): number[] {
+  const frames = extractFrames(channelData, sampleRate);
 
   if (frames.length === 0) {
-    throw new Error("Could not extract MFCC features");
+    throw new Error("Could not extract audio features");
   }
 
-  const mean = new Array(N_MFCC).fill(0);
-  for (const frame of frames) {
-    for (let i = 0; i < N_MFCC; i++) {
-      mean[i] += frame[i];
+  const vector: number[] = [];
+
+  // MFCC mean (13)
+  const mfccMeans: number[] = [];
+  for (let c = 0; c < N_MFCC; c++) {
+    const vals = frames.map((f) => f.mfcc[c]);
+    mfccMeans.push(mean(vals));
+  }
+  vector.push(...mfccMeans);
+
+  // MFCC variance (13)
+  for (let c = 0; c < N_MFCC; c++) {
+    const vals = frames.map((f) => f.mfcc[c]);
+    vector.push(variance(vals, mfccMeans[c]));
+  }
+
+  // MFCC 4-segment means (52) — temporal envelope
+  const segmentSize = Math.floor(frames.length / NUM_SEGMENTS);
+  for (let seg = 0; seg < NUM_SEGMENTS; seg++) {
+    const start = seg * segmentSize;
+    const end = seg === NUM_SEGMENTS - 1 ? frames.length : start + segmentSize;
+    const segFrames = frames.slice(start, end);
+
+    for (let c = 0; c < N_MFCC; c++) {
+      const vals = segFrames.map((f) => f.mfcc[c]);
+      vector.push(mean(vals));
     }
   }
-  for (let i = 0; i < N_MFCC; i++) {
-    mean[i] /= frames.length;
-  }
 
-  return mean;
+  // Spectral centroid (1)
+  vector.push(mean(frames.map((f) => f.spectralCentroid)));
+  // Spectral rolloff (1)
+  vector.push(mean(frames.map((f) => f.spectralRolloff)));
+  // Spectral flatness (1)
+  vector.push(mean(frames.map((f) => f.spectralFlatness)));
+  // RMS energy (1)
+  vector.push(mean(frames.map((f) => f.rms)));
+  // Zero crossing rate (1)
+  vector.push(mean(frames.map((f) => f.zcr)));
+
+  return vector;
 }
 
 /** Search Freesound for a given query, returning up to maxResults sounds */
@@ -163,8 +260,6 @@ async function searchFreesound(query: string, maxResults: number): Promise<Frees
 
 /** Download a Freesound preview (no auth needed for previews) */
 async function downloadPreview(sound: FreesoundResult): Promise<{ buffer: Buffer; format: string } | null> {
-  // Freesound previews are available in ogg and mp3
-  // Keys like: preview-hq-ogg, preview-hq-mp3, preview-lq-ogg, preview-lq-mp3
   for (const fmt of PREFERRED_FORMATS) {
     const key = `preview-hq-${fmt}`;
     const url = sound.previews?.[key];
@@ -195,7 +290,7 @@ async function soundExists(id: string): Promise<boolean> {
 }
 
 async function main() {
-  console.log("=== Freesound Music Production Sounds Ingestion ===\n");
+  console.log("=== Freesound Music Production Sounds Ingestion (83-dim features) ===\n");
 
   // Collect all unique sounds across all tags
   const seenIds = new Set<number>();
@@ -248,25 +343,25 @@ async function main() {
         continue;
       }
 
-      // 2. Decode audio to PCM
-      let audioBuffer: any;
+      // 2. Decode audio to PCM via ffmpeg
+      let channelData: Float32Array;
+      let sampleRate: number;
       try {
-        audioBuffer = await decode(download.buffer);
+        const decoded = decodeAudioWithFFmpeg(download.buffer, download.format);
+        channelData = decoded.channelData;
+        sampleRate = decoded.sampleRate;
       } catch (decodeErr) {
         console.log(`  [${processed}/${soundQueue.length}] Failed to decode ${sound.name}, skipping`);
         failed++;
         continue;
       }
 
-      const channelData = audioBuffer.getChannelData(0) as Float32Array;
-      const sampleRate = audioBuffer.sampleRate as number;
-
-      // 3. Extract MFCC embedding
+      // 3. Extract 83-dim feature embedding
       let embedding: number[];
       try {
-        embedding = extractMFCC(channelData, sampleRate);
+        embedding = extractFeatures(channelData, sampleRate);
       } catch {
-        console.log(`  [${processed}/${soundQueue.length}] MFCC extraction failed for ${sound.name}, skipping`);
+        console.log(`  [${processed}/${soundQueue.length}] Feature extraction failed for ${sound.name}, skipping`);
         failed++;
         continue;
       }

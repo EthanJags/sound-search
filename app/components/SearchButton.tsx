@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Search, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { extractMFCC } from "@/app/lib/mfcc";
+import { extractFeatures } from "@/app/lib/audio-features";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SearchButtonProps {
   audioBlob: Blob | null;
@@ -39,8 +38,8 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
     setSearchStatus(null);
 
     try {
-      // Extract MFCC features client-side
-      const vector = await extractMFCC(audioBlob);
+      // Extract audio features client-side (83-dim vector)
+      const vector = await extractFeatures(audioBlob);
 
       // Search via local API route
       const response = await fetch("/api/search", {
@@ -109,19 +108,18 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
       </Button>
 
       {searchStatus && (
-        <Alert variant={searchStatus.type === "error" ? "destructive" : "default"} className={`animate-in fade-in slide-in-from-top-2 ${searchStatus.type === "success" ? "border-green-500/50 text-green-600 dark:text-green-500 bg-green-500/10" : ""}`}>
+        <div className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm animate-in fade-in slide-in-from-top-2 ${
+          searchStatus.type === "error"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-green-500/10 text-green-600 dark:text-green-400"
+        }`}>
           {searchStatus.type === "error" ? (
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4 shrink-0" />
           ) : (
-            <CheckCircle2 className="h-4 w-4 stroke-green-600 dark:stroke-green-500" />
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
           )}
-          <AlertTitle className="text-body font-bold">
-            {searchStatus.type === "success" ? "Success" : "Error"}
-          </AlertTitle>
-          <AlertDescription className="text-body-sm">
-            {searchStatus.message}
-          </AlertDescription>
-        </Alert>
+          <span>{searchStatus.message}</span>
+        </div>
       )}
     </div>
   );

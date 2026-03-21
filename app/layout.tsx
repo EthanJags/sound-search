@@ -16,6 +16,17 @@ const workSans = Work_Sans({
 export const metadata: Metadata = {
   title: "Sound Similarity Search",
   description: "Search for sounds with your voice!",
+  openGraph: {
+    title: "Sound Similarity Search",
+    description: "Search for sounds with your voice!",
+    images: ["/opengraph.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sound Similarity Search",
+    description: "Search for sounds with your voice!",
+    images: ["/opengraph.png"],
+  },
 };
 
 export default function RootLayout({

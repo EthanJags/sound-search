@@ -137,6 +137,8 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
   };
 
   useEffect(() => {
+    if (audioBlob) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat && e.target === document.body) {
         e.preventDefault();
@@ -159,7 +161,7 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isRecording, mediaRecorder]);
+  }, [isRecording, mediaRecorder, audioBlob]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
