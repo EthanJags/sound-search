@@ -86,11 +86,9 @@ export default function Home() {
       </div>
 
       <footer className="relative py-6 flex items-center justify-center gap-1 text-caption text-muted-foreground">
-        <span>Made with</span>
-        <span className="text-red-500">❤️</span>
-        <span>by</span>
+        <span>Made by</span>
         <a href="https://ethanjagoda.me" className="text-primary hover:underline font-bold">
-          Ethan Jagoda
+          Jagoda Labs
         </a>
       </footer>
     </div>
