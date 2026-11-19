@@ -32,11 +32,22 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
 
     const audio = new Audio(sound.audioUrl);
     audioRef.current = audio;
-    audio.play();
+    audio.play().catch(() => {
+      // Playback failed (e.g. file missing) — don't leave the row stuck on "playing"
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+        setActiveIndex(-1);
+      }
+    });
     audio.onended = () => {
-      if (activeIndex === index) setActiveIndex(-1);
+      // Only reset if this is still the current sound
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+        setActiveIndex(-1);
+        setIsPaused(false);
+      }
     };
-  }, [ranked_sounds, activeIndex]);
+  }, [ranked_sounds]);
 
   const stopSound = useCallback(() => {
     if (audioRef.current) {
@@ -71,12 +82,14 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
         e.preventDefault();
         const next = activeIndex < ranked_sounds.length - 1 ? activeIndex + 1 : 0;
         setActiveIndex(next);
+        setIsPaused(false);
         playSound(next);
         itemRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         const prev = activeIndex > 0 ? activeIndex - 1 : ranked_sounds.length - 1;
         setActiveIndex(prev);
+        setIsPaused(false);
         playSound(prev);
         itemRefs.current[prev]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } else if (e.key === ' ') {
@@ -94,7 +107,7 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeIndex, ranked_sounds, playSound, stopSound]);
+  }, [activeIndex, ranked_sounds, playSound, stopSound, toggleSound]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -106,11 +119,9 @@ const Ranking: FC<RankingProps> = ({ ranked_sounds = [] }) => {
     };
   }, []);
 
-  // Reset active index when sounds change
-  useEffect(() => {
-    stopSound();
-    setActiveIndex(-1);
-  }, [ranked_sounds, stopSound]);
+  // No reset needed when the list changes: a new search unmounts this
+  // component (results are cleared first), and "Show More" only appends rows,
+  // so existing indices — and any sound that's playing — stay valid.
 
   if (!ranked_sounds.length) return null;
 

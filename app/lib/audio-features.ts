@@ -156,21 +156,80 @@ export function buildFeatureVector(frames: FrameFeatures[]): number[] {
 }
 
 /**
+ * Sample rate the sound library was analysed at (the ingestion scripts decode
+ * everything to 44.1 kHz mono). Queries must be analysed the same way, or the
+ * frame length and frequency bins won't line up with the stored embeddings.
+ */
+const ANALYSIS_SAMPLE_RATE = 44100;
+
+/** Peak amplitude below which a recording is treated as silent (~ -60 dBFS) */
+const SILENCE_PEAK = 0.001;
+
+/** Thrown for input the user can fix (silent, too short, undecodable). */
+export class AudioInputError extends Error {}
+
+function createDecodeContext(): AudioContext {
+  const Ctor: typeof AudioContext =
+    window.AudioContext || (window as any).webkitAudioContext;
+  try {
+    // decodeAudioData resamples to the context's rate
+    return new Ctor({ sampleRate: ANALYSIS_SAMPLE_RATE });
+  } catch {
+    return new Ctor();
+  }
+}
+
+/** Average all channels to mono (matches `ffmpeg -ac 1` used at ingestion) */
+function toMono(audioBuffer: AudioBuffer): Float32Array {
+  const channels = audioBuffer.numberOfChannels;
+  if (channels === 1) return audioBuffer.getChannelData(0);
+
+  const mono = new Float32Array(audioBuffer.length);
+  for (let c = 0; c < channels; c++) {
+    const data = audioBuffer.getChannelData(c);
+    for (let i = 0; i < data.length; i++) mono[i] += data[i] / channels;
+  }
+  return mono;
+}
+
+/**
  * Extract an 83-dimensional audio feature vector from an audio Blob.
  * Client-side extraction using Web Audio API + Meyda.
  */
 export async function extractFeatures(audioBlob: Blob): Promise<number[]> {
   const arrayBuffer = await audioBlob.arrayBuffer();
 
-  const audioContext = new AudioContext();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  await audioContext.close();
+  const audioContext = createDecodeContext();
+  let audioBuffer: AudioBuffer;
+  try {
+    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  } catch {
+    throw new AudioInputError(
+      "Couldn't read that audio. Try recording again or use a different file."
+    );
+  } finally {
+    await audioContext.close();
+  }
 
-  const channelData = audioBuffer.getChannelData(0);
+  const channelData = toMono(audioBuffer);
+
+  let peak = 0;
+  for (let i = 0; i < channelData.length; i++) {
+    const a = Math.abs(channelData[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak < SILENCE_PEAK) {
+    throw new AudioInputError(
+      "No sound detected. Check your microphone and try again."
+    );
+  }
+
   const frames = extractFrames(channelData, audioBuffer.sampleRate);
 
   if (frames.length === 0) {
-    throw new Error("Could not extract audio features");
+    throw new AudioInputError(
+      "That audio is too short. Record a slightly longer sound."
+    );
   }
 
   return buildFeatureVector(frames);

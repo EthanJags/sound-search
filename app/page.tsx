@@ -27,6 +27,15 @@ export default function Home() {
 
   const hasResults = rankedSounds.length > 0;
 
+  // New audio invalidates the current results; clearing them brings the
+  // search button back so the new recording can be searched.
+  const handleAudioChange = (blob: Blob | null) => {
+    setAudioBlob(blob);
+    setRankedSounds([]);
+    setRanking([]);
+    setStartingIndex(0);
+  };
+
   return (
     <div className="min-h-screen blob-gradient text-foreground flex flex-col">
       <div className="absolute inset-0 grain-overlay pointer-events-none" />
@@ -45,7 +54,7 @@ export default function Home() {
 
         <main className="flex flex-col gap-6">
           <div className="space-y-4">
-            <RecordingButton audioBlob={audioBlob} setAudioBlob={setAudioBlob} />
+            <RecordingButton audioBlob={audioBlob} setAudioBlob={handleAudioChange} />
 
             {!hasResults && (
               <SearchButton

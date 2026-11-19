@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/app/lib/db";
 import { normalize, NormStats } from "@/app/lib/normalization";
 
+/** Must match FEATURE_DIM in app/lib/audio-features.ts (a client module). */
+const FEATURE_DIM = 83;
+
 const BLOB_BASE_URL =
   process.env.BLOB_BASE_URL ||
   "https://6zomzp29tjoe4v5u.public.blob.vercel-storage.com";
@@ -37,11 +40,23 @@ async function getNormStats(): Promise<NormStats | null> {
 }
 
 export async function POST(request: NextRequest) {
+  let body: { vector?: unknown; sound_pack?: unknown } | null;
   try {
-    const body = await request.json();
-    const { vector, sound_pack } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    if (!vector || !Array.isArray(vector)) {
+  try {
+    const vector = body?.vector;
+    const sound_pack =
+      typeof body?.sound_pack === "string" ? body.sound_pack : undefined;
+
+    if (
+      !Array.isArray(vector) ||
+      vector.length === 0 ||
+      !vector.every((v) => typeof v === "number" && Number.isFinite(v))
+    ) {
       return NextResponse.json(
         { error: "vector (number[]) is required" },
         { status: 400 }
@@ -50,6 +65,13 @@ export async function POST(request: NextRequest) {
 
     // Normalize the query vector if stats are available
     const stats = await getNormStats();
+    const expectedDim = stats ? stats.mean.length : FEATURE_DIM;
+    if (vector.length !== expectedDim) {
+      return NextResponse.json(
+        { error: `vector must have ${expectedDim} dimensions` },
+        { status: 400 }
+      );
+    }
     const searchVector = stats ? normalize(vector, stats) : vector;
 
     const embeddingStr = `[${searchVector.join(",")}]`;

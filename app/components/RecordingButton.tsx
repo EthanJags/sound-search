@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Mic, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AudioPlayer from "./AudioPlayer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RecordingButtonProps {
@@ -15,18 +16,20 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const getSupportedMimeType = () => {
     const types = [
       'audio/webm;codecs=opus',
       'audio/webm',
       'audio/ogg;codecs=opus',
-      'audio/ogg'
+      'audio/ogg',
+      'audio/mp4' // Safari
     ];
-    return types.find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm';
+    // undefined lets the browser pick its own default format
+    return types.find(type => MediaRecorder.isTypeSupported(type));
   };
 
   const playTone = (frequency: number, duration: number, type: 'start' | 'stop') => {
@@ -94,11 +97,11 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
   };
 
   const startRecording = async () => {
+    setError(null);
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(audioStream, {
-        mimeType: getSupportedMimeType()
-      });
+      const mimeType = getSupportedMimeType();
+      const recorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
       const audioChunks: BlobPart[] = [];
 
       // Play start tone
@@ -109,7 +112,7 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const audioBlob = new Blob(audioChunks, { type: recorder.mimeType || "audio/webm" });
         setAudioBlob(audioBlob);
         audioStream.getTracks().forEach(track => track.stop());
         setStream(null);
@@ -126,6 +129,14 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
       recorder.start();
     } catch (err) {
       console.error("Error accessing microphone:", err);
+      const name = (err as { name?: string })?.name;
+      setError(
+        name === "NotAllowedError" || name === "SecurityError"
+          ? "Microphone access was blocked. Allow it in your browser settings, or drag in an audio file."
+          : name === "NotFoundError"
+            ? "No microphone found. Connect one, or drag in an audio file."
+            : "Couldn't start recording. Try again, or drag in an audio file."
+      );
     }
   };
 
@@ -181,8 +192,16 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
     setIsDragging(false);
 
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('audio/')) {
+    if (!file) return;
+    // Some systems report no MIME type for audio files, so fall back to the extension
+    const isAudio =
+      file.type.startsWith('audio/') ||
+      /\.(wav|mp3|ogg|oga|flac|m4a|aac|aif|aiff|webm|opus)$/i.test(file.name);
+    if (isAudio) {
+      setError(null);
       setAudioBlob(file);
+    } else {
+      setError("That file isn't audio. Drop a WAV, MP3, OGG or similar.");
     }
   };
 
@@ -197,19 +216,12 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <audio
-            controls
-            className="flex-1 h-9"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            key={audioUrl}
-          >
-            <source src={audioUrl} type="audio/webm" />
-          </audio>
+          <AudioPlayer key={audioUrl} src={audioUrl} />
           <Tooltip>
             <TooltipTrigger
               onClick={startRecording}
-              className="shrink-0 size-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-zinc-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60"
+              aria-label="Search new audio"
+              className="shrink-0 size-9 rounded-full text-zinc-500 flex items-center justify-center hover:bg-zinc-200 hover:text-zinc-900 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60"
             >
               <RotateCcw className="size-4 stroke-[2.5]" />
             </TooltipTrigger>
@@ -260,6 +272,11 @@ export default function RecordingButton({ audioBlob, setAudioBlob }: RecordingBu
             )}
           </div>
         </button>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 px-4 text-body-sm text-destructive">
+          {error}
+        </p>
       )}
     </div>
   );

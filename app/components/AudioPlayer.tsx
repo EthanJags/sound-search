@@ -1,103 +1,146 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause } from 'lucide-react';
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Play, Pause } from "lucide-react";
 
 interface AudioPlayerProps {
   src: string;
-  onPlay?: () => void;
-  onPause?: () => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, onPlay, onPause }) => {
+/**
+ * Most clips here are a second or two long, where "0:00 / 0:00" says nothing,
+ * so short audio is shown in tenths of a second ("0.4 / 0.8s").
+ */
+const formatTime = (time: number, short: boolean) => {
+  if (!Number.isFinite(time) || time < 0) time = 0;
+  if (short) return time.toFixed(1);
+  const minutes = Math.floor(time / 60);
+  const seconds = Math.floor(time % 60);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
+
+/**
+ * Minimal inline player: play/pause, a thin seekable progress bar and the time.
+ * Give it `key={src}` so its state resets when the audio changes.
+ */
+export default function AudioPlayer({ src }: AudioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
+  // timeupdate only fires a few times a second, which looks jerky on short
+  // clips — follow the playhead every frame while playing instead.
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.addEventListener('loadedmetadata', () => {
-        setDuration(audioRef.current?.duration || 0);
-      });
-    }
-  }, []);
+    if (!isPlaying) return;
+    let frame: number;
+    const tick = () => {
+      if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [isPlaying]);
 
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const short = hasDuration && duration < 10;
+  const progress = hasDuration ? Math.min(1, currentTime / duration) : 0;
 
-  const handlePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-        onPause?.();
-      } else {
-        audioRef.current.play();
-        setIsPlaying(true);
-        onPlay?.();
-      }
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play().catch(() => setIsPlaying(false));
+    } else {
+      audio.pause();
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
+  const seekTo = (time: number) => {
+    const audio = audioRef.current;
+    if (!audio || !hasDuration) return;
+    const clamped = Math.max(0, Math.min(duration, time));
+    audio.currentTime = clamped;
+    setCurrentTime(clamped);
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
+  const seekFromPointer = (clientX: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const rect = track.getBoundingClientRect();
+    seekTo(((clientX - rect.left) / rect.width) * duration);
   };
 
   return (
-    <div className="flex items-center gap-4 w-full bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+    <div className="flex-1 min-w-0 flex items-center gap-3">
       <button
-        onClick={handlePlayPause}
-        className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+        type="button"
+        onClick={togglePlay}
+        aria-label={isPlaying ? "Pause" : "Play"}
+        className="shrink-0 size-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-zinc-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60"
       >
         {isPlaying ? (
-          <Pause className="w-4 h-4" />
+          <Pause className="size-4 fill-current" />
         ) : (
-          <Play className="w-4 h-4 ml-0.5" />
+          <Play className="size-4 fill-current ml-0.5" />
         )}
       </button>
 
-      <div className="flex-1">
-        <div className="relative pt-1">
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1 bg-gray-200 dark:bg-gray-700 accent-indigo-500 cursor-pointer"
+      <div
+        ref={trackRef}
+        role="slider"
+        tabIndex={0}
+        aria-label="Seek"
+        aria-valuemin={0}
+        aria-valuemax={hasDuration ? Math.round(duration * 10) / 10 : 0}
+        aria-valuenow={Math.round(currentTime * 10) / 10}
+        aria-valuetext={`${currentTime.toFixed(1)} of ${hasDuration ? duration.toFixed(1) : 0} seconds`}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          seekFromPointer(e.clientX);
+        }}
+        onPointerMove={(e) => {
+          if (e.buttons === 1) seekFromPointer(e.clientX);
+        }}
+        onKeyDown={(e) => {
+          const step = hasDuration ? Math.max(0.1, duration / 20) : 0;
+          if (e.key === "ArrowRight") { e.preventDefault(); seekTo(currentTime + step); }
+          if (e.key === "ArrowLeft") { e.preventDefault(); seekTo(currentTime - step); }
+        }}
+        className="group flex-1 min-w-0 h-9 flex items-center cursor-pointer touch-none rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60"
+      >
+        <div className="relative w-full h-1 rounded-full bg-zinc-200">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-zinc-900"
+            style={{ width: `${progress * 100}%` }}
+          />
+          <div
+            className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-zinc-900 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity"
+            style={{ left: `${progress * 100}%` }}
           />
         </div>
-        <div className="flex justify-between mt-1">
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {formatTime(currentTime)}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {formatTime(duration)}
-          </span>
-        </div>
       </div>
+
+      <span className="shrink-0 text-body-sm text-zinc-500 tabular-nums">
+        {formatTime(currentTime, short)}
+        {hasDuration && ` / ${formatTime(duration, short)}${short ? "s" : ""}`}
+      </span>
 
       <audio
         ref={audioRef}
         src={src}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
+        preload="metadata"
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }}
         className="hidden"
       />
     </div>
   );
-};
-
-export default AudioPlayer;
+}

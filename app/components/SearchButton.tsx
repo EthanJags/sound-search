@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Search, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { extractFeatures } from "@/app/lib/audio-features";
+import { extractFeatures, AudioInputError } from "@/app/lib/audio-features";
 import { Button } from "@/components/ui/button";
 
 interface SearchButtonProps {
@@ -53,7 +53,6 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
 
       const data = await response.json();
       const matches = data.matches;
-      console.log("matches", matches)
       // Convert matches to ranked sounds format
       // Search results include blob URLs directly — no separate audio fetch needed
       const mappedRanking = matches.map((match: any) => ({
@@ -65,7 +64,7 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
       }));
       setRanking(mappedRanking);
 
-      setStartingIndex(prev => prev + batchSize);
+      setStartingIndex(batchSize);
       setRankedSounds(mappedRanking.slice(0, batchSize));
       
 
@@ -78,7 +77,9 @@ export default function SearchButton({ audioBlob, searchMode, setRanking, setRan
       console.error('Error searching:', error);
       setSearchStatus({
         type: "error",
-        message: "Failed to perform search. Please try again."
+        message: error instanceof AudioInputError
+          ? error.message
+          : "Failed to perform search. Please try again."
       });
       setRankedSounds([]);
     } finally {

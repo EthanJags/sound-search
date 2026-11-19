@@ -21,8 +21,8 @@ import urllib.parse
 import boto3
 
 # AWS S3
-aws_access_key_id='AKIAX5573J5D2IWNTDJY'
-aws_secret_access_key='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'
+aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID']
+aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY']
 # create an instance of the client connection to your aws
 s3_client = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key )
 
@@ -38,7 +38,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 CORS(app)
 
 # Pinecone
-pc = Pinecone(api_key="pcsk_2XKZvc_J9oCdGJwcvGN139MsHiKkPFp1TugQhRpy69Zyp9ZXcJbs8mnb9LrfXH3Ri8Hayh")
+pc = Pinecone(api_key=os.environ['PINECONE_API_KEY'])
 index_name = "music-ai"
 index = pc.Index(index_name)
 
